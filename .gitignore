@@ -1,12 +1,20 @@
 node_modules/
 .env
-apps/*.apk
+.env.*
+!.env.example
+
+# Downloaded application binaries are deliberately not committed.
+apps/**/*.apk
+
 reports/
 allure-results/
 allure-report/
 logs/
 *.log
+
 .idea/
 .vscode/
 dist/
 coverage/
+.DS_Store
+npm-debug.log*
