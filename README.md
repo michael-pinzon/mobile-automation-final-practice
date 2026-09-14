@@ -97,7 +97,7 @@ predeterminados, pero el runner las recibe desde el entorno del proceso.
 
 | Variable | Predeterminado | Uso |
 | --- | --- | --- |
-| `ANDROID_APP_PATH` | `apps/android/wdio-native-demo-app-2.2.0.apk` | Ruta a un APK local alternativo. |
+| `ANDROID_APP_PATH` | `apps/android/wdio-native-demo-app-2.2.0.apk` | Ruta a un APK local alternativo; las rutas relativas parten de la raíz del proyecto. |
 | `ANDROID_DEVICE_NAME` | `Android Emulator` | Nombre del dispositivo o AVD. |
 | `ANDROID_UDID` | — | Identificador exacto reportado por `adb devices`. |
 
