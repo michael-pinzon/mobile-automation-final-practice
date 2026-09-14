@@ -26,7 +26,9 @@ class LoginPage extends AuthFormPage {
     await expect(this.byAccessibilityId('input-email')).toBeEnabled();
     await expect(this.byAccessibilityId('input-password')).toBeEnabled();
     await expect(this.byAccessibilityId('button-LOGIN')).toBeEnabled();
-    await this.assertElementText(this.loginButtonSelector, 'LOGIN');
+    // The accessible button wrapper may expose no text on Android; assert the
+    // rendered label through its Text/UISelector instead.
+    await this.assertScreenText('LOGIN');
   }
 
   async openSignUp(): Promise<void> {

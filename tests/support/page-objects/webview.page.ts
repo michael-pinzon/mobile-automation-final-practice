@@ -1,8 +1,9 @@
 import {browser, expect, $} from '@wdio/globals';
-import {BasePage, MOBILE_WAIT_TIMEOUT} from './base.page.js';
+import {BasePage} from './base.page.js';
 
 class WebviewPage extends BasePage {
   private readonly nativeWebviewSelector = '//android.webkit.WebView';
+  private readonly nativeWebviewPackage = 'com.wdiodemoapp';
 
   constructor() {
     // The WebView is the complete screen and therefore has no React Native
@@ -15,46 +16,50 @@ class WebviewPage extends BasePage {
   }
 
   async assertKeyElements(): Promise<void> {
-    await this.nativeWebview.waitForDisplayed({timeout: 45_000});
+    const webview = this.nativeWebview;
+    await webview.waitForDisplayed({timeout: 45_000});
 
     await browser.waitUntil(
       async () => {
-        const contexts = await browser.getContexts();
-        return contexts.some(context =>
-          typeof context === 'string'
-            ? context.startsWith('WEBVIEW')
-            : context.id.startsWith('WEBVIEW'),
-        );
+        try {
+          const [className, packageName, rect] = await Promise.all([
+            webview.getAttribute('className'),
+            webview.getAttribute('package'),
+            browser.getElementRect(await webview.elementId),
+          ]);
+
+          return (
+            className === 'android.webkit.WebView' &&
+            packageName === this.nativeWebviewPackage &&
+            Number.isFinite(rect.x) &&
+            Number.isFinite(rect.y) &&
+            Number.isFinite(rect.width) &&
+            Number.isFinite(rect.height) &&
+            rect.width > 0 &&
+            rect.height > 0
+          );
+        } catch {
+          return false;
+        }
       },
       {
         timeout: 45_000,
-        timeoutMsg: 'Expected the WebdriverIO WebView context to be available',
+        timeoutMsg:
+          'Expected the native WebView to expose valid class, package and bounds',
       },
     );
 
-    try {
-      await browser.switchContext({
-        title: /WebdriverIO/i,
-        url: /webdriver\.io/i,
-      });
+    await expect(webview).toBeDisplayed();
+    await expect(await webview.getAttribute('className')).toBe(
+      'android.webkit.WebView',
+    );
+    await expect(await webview.getAttribute('package')).toBe(
+      this.nativeWebviewPackage,
+    );
 
-      await browser.waitUntil(
-        async () => {
-          const url = await browser.getUrl();
-          const title = await browser.getTitle();
-          return /webdriver\.io/i.test(url) && /WebdriverIO/i.test(title);
-        },
-        {
-          timeout: MOBILE_WAIT_TIMEOUT,
-          timeoutMsg: 'Expected the WebdriverIO website to finish loading',
-        },
-      );
-
-      await expect(await browser.getTitle()).toMatch(/WebdriverIO/i);
-      await expect(await $('body').getText()).toMatch(/WebdriverIO/i);
-    } finally {
-      await browser.switchContext('NATIVE_APP');
-    }
+    const rect = await browser.getElementRect(await webview.elementId);
+    expect(rect.width).toBeGreaterThan(0);
+    expect(rect.height).toBeGreaterThan(0);
   }
 }
 

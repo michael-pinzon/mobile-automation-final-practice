@@ -30,14 +30,19 @@ type ElementHandle = GestureTarget & {
 };
 
 const CARD_MINIMUM_VISIBLE_RATIO = 0.5;
+const ACTIVE_CARD_ZONE_RATIO = 0.5;
 const MAX_VERTICAL_RESET_SWIPES = 10;
 const MAX_HORIZONTAL_RESET_SWIPES = SWIPE_CARD_TITLES.length;
 const TRANSITION_TIMEOUT = 5_000;
+const CARD_TITLE_XPATH = SWIPE_CARD_TITLES.map(
+  title => `contains(@text,"${title}")`,
+).join(' or ');
 
 class SwipePage extends BasePage {
   private readonly carouselSelector =
     '//*[@resource-id="Carousel" or @content-desc="Carousel"]';
   private readonly cardSelector = '~card';
+  private readonly cardTitleSelector = `//*[${CARD_TITLE_XPATH}]`;
 
   constructor() {
     super('~Swipe-screen');
@@ -93,12 +98,15 @@ class SwipePage extends BasePage {
   ): Promise<void> {
     await browser.waitUntil(
       async () => {
-        const visibleCards = await this.visibleCardElements();
-        const visibleTitles = await this.visibleCardTitles();
+        const carouselRect = await this.rectOf(this.carouselElement);
+        const visibleCards = await this.visibleCardElements(carouselRect);
+        const activeTitle = await this.activeCardTitle(
+          carouselRect,
+          visibleCards,
+        );
         return (
           visibleCards.length === 1 &&
-          visibleTitles.length === 1 &&
-          visibleTitles[0] === expectedTitle
+          activeTitle === expectedTitle
         );
       },
       {
@@ -114,10 +122,11 @@ class SwipePage extends BasePage {
   ): Promise<void> {
     await this.waitForOnlyCardVisible(expectedTitle);
 
-    const visibleCards = await this.visibleCardElements();
-    const visibleTitles = await this.visibleCardTitles();
+    const carouselRect = await this.rectOf(this.carouselElement);
+    const visibleCards = await this.visibleCardElements(carouselRect);
+    const activeTitle = await this.activeCardTitle(carouselRect, visibleCards);
     expect(visibleCards).toHaveLength(1);
-    expect(visibleTitles).toEqual([expectedTitle]);
+    expect(activeTitle).toBe(expectedTitle);
   }
 
   async waitForCardToDisappear(
@@ -273,27 +282,15 @@ class SwipePage extends BasePage {
     title: (typeof SWIPE_CARD_TITLES)[number],
   ): Promise<boolean> {
     const carouselRect = await this.rectOf(this.carouselElement);
-    const cards = await $$(this.cardSelector);
-
-    for (const card of cards) {
-      const cardText = await card.getText().catch(() => '');
-      if (
-        cardText.toUpperCase().includes(title) &&
-        (await this.isElementVisibleWithin(
-          card,
-          carouselRect,
-          CARD_MINIMUM_VISIBLE_RATIO,
-        ))
-      ) {
-        return true;
-      }
-    }
-
-    return this.textIsVisibleWithin(this.byText(title), carouselRect);
+    const visibleCards = await this.visibleCardElements(carouselRect);
+    return (await this.activeCardTitle(carouselRect, visibleCards)) === title;
   }
 
-  private async visibleCardElements(): Promise<ElementHandle[]> {
-    const carouselRect = await this.rectOf(this.carouselElement);
+  private async visibleCardElements(
+    carouselRect?: Rectangle,
+  ): Promise<ElementHandle[]> {
+    const currentCarouselRect =
+      carouselRect ?? (await this.rectOf(this.carouselElement));
     const cards = await $$(this.cardSelector);
     const visibleCards: ElementHandle[] = [];
 
@@ -301,7 +298,7 @@ class SwipePage extends BasePage {
       if (
         await this.isElementVisibleWithin(
           card,
-          carouselRect,
+          currentCarouselRect,
           CARD_MINIMUM_VISIBLE_RATIO,
         )
       ) {
@@ -309,13 +306,16 @@ class SwipePage extends BasePage {
       }
     }
 
-    // Some Android accessibility configurations expose the card text but
-    // omit a non-accessible View carrying the `card` content description.
-    // Text bounds remain a reliable, rectangle-based visibility signal.
+    // Some Android accessibility configurations omit a non-accessible View
+    // carrying the `card` content description. In that case, use only the
+    // active title as a conservative fallback; partial title text must not
+    // inflate the visible-card count.
     if (visibleCards.length === 0) {
-      for (const title of SWIPE_CARD_TITLES) {
-        const titleElement = this.byText(title);
-        if (await this.textIsVisibleWithin(titleElement, carouselRect)) {
+      const titleElements = await this.cardTitleElements();
+      for (const titleElement of titleElements) {
+        if (
+          await this.isElementCenterWithin(titleElement, currentCarouselRect)
+        ) {
           visibleCards.push(titleElement);
         }
       }
@@ -324,37 +324,76 @@ class SwipePage extends BasePage {
     return visibleCards;
   }
 
-  private async visibleCardTitles(): Promise<string[]> {
-    const carouselRect = await this.rectOf(this.carouselElement);
-    const visibleCards = await this.visibleCardElements();
-    const titles: string[] = [];
-
-    for (const card of visibleCards) {
-      const cardText = await card.getText().catch(() => '');
-      const title = SWIPE_CARD_TITLES.find(candidate =>
-        cardText.toUpperCase().includes(candidate),
-      );
-      if (title && !titles.includes(title)) {
-        titles.push(title);
-      }
-    }
-
-    if (titles.length === 0) {
-      for (const title of SWIPE_CARD_TITLES) {
-        if (await this.textIsVisibleWithin(this.byText(title), carouselRect)) {
-          titles.push(title);
-        }
-      }
-    }
-
-    return titles;
+  private async cardTitleElements(): Promise<ElementHandle[]> {
+    return (await $$(this.cardTitleSelector)) as unknown as ElementHandle[];
   }
 
-  private async textIsVisibleWithin(
+  private async activeCardTitle(
+    carouselRect: Rectangle,
+    visibleCards: ElementHandle[],
+  ): Promise<(typeof SWIPE_CARD_TITLES)[number] | undefined> {
+    for (const card of visibleCards) {
+      if (!(await this.isElementCenterWithin(card, carouselRect))) {
+        continue;
+      }
+
+      const title = this.titleFromText(await card.getText().catch(() => ''));
+      if (title) {
+        return title;
+      }
+    }
+
+    // Card wrappers on the demo app can have an empty text attribute. Locate
+    // the title once and select the one whose rectangle is in the carousel's
+    // central zone, excluding the partially exposed neighbour.
+    const titleElements = await this.cardTitleElements();
+    for (const titleElement of titleElements) {
+      if (!(await this.isElementCenterWithin(titleElement, carouselRect))) {
+        continue;
+      }
+
+      const title = this.titleFromText(
+        await titleElement.getText().catch(() => ''),
+      );
+      if (title) {
+        return title;
+      }
+    }
+
+    return undefined;
+  }
+
+  private titleFromText(
+    text: string,
+  ): (typeof SWIPE_CARD_TITLES)[number] | undefined {
+    const normalizedText = text.toUpperCase();
+    return SWIPE_CARD_TITLES.find(title => normalizedText.includes(title));
+  }
+
+  private async isElementCenterWithin(
     element: ElementHandle,
     viewport: Rectangle,
   ): Promise<boolean> {
-    return this.isElementVisibleWithin(element, viewport, 0.1);
+    if (!(await element.isDisplayed().catch(() => false))) {
+      return false;
+    }
+
+    const elementRect = await this.rectOf(element);
+    if (elementRect.width <= 0 || elementRect.height <= 0) {
+      return false;
+    }
+
+    const centerX = elementRect.x + elementRect.width / 2;
+    const centerY = elementRect.y + elementRect.height / 2;
+    const zoneWidth = viewport.width * ACTIVE_CARD_ZONE_RATIO;
+    const zoneX = viewport.x + (viewport.width - zoneWidth) / 2;
+
+    return (
+      centerX >= zoneX &&
+      centerX <= zoneX + zoneWidth &&
+      centerY >= viewport.y &&
+      centerY <= viewport.y + viewport.height
+    );
   }
 
   private async isElementVisibleWithin(
