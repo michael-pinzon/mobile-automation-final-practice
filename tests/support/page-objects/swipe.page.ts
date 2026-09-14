@@ -42,6 +42,8 @@ class SwipePage extends BasePage {
   private readonly carouselSelector =
     '//*[@resource-id="Carousel" or @content-desc="Carousel"]';
   private readonly cardSelector = '~card';
+  private readonly foundMessageSelector =
+    'android=new UiSelector().textContains("You found me!!!")';
   private readonly cardTitleSelector = `//*[${CARD_TITLE_XPATH}]`;
 
   constructor() {
@@ -57,7 +59,7 @@ class SwipePage extends BasePage {
   }
 
   private get foundMessage() {
-    return this.byText(SWIPE_FOUND_TEXT);
+    return $(this.foundMessageSelector);
   }
 
   async assertKeyElements(): Promise<void> {
@@ -85,11 +87,17 @@ class SwipePage extends BasePage {
   }
 
   /**
-   * Scrolls the page down. A downward content scroll is produced by moving
-   * the touch pointer upward, as it would be on a physical Android screen.
+   * Scrolls the page down through UiAutomator2's ScrollView command. This
+   * targets the screen element directly so the child carousel cannot capture
+   * the gesture when it overlaps the lower part of the view.
    */
   async scrollDown(): Promise<void> {
-    await swipeWithin(this.screen, 'up', {distanceRatio: 0.65});
+    await this.waitForDisplayed();
+    await browser.execute('mobile: scrollGesture', {
+      elementId: await this.screen.elementId,
+      direction: 'down',
+      percent: 0.75,
+    });
   }
 
   async waitForOnlyCardVisible(
@@ -268,11 +276,18 @@ class SwipePage extends BasePage {
 
   private async foundMessageIsVisible(): Promise<boolean> {
     try {
-      return this.isElementVisibleWithin(
-        this.foundMessage,
-        await this.rectOf(this.screen),
-        0.1,
+      const screenRect = await this.rectOf(this.screen);
+      const messages = await $$(
+        this.foundMessageSelector,
       );
+
+      for (const message of messages) {
+        if (await this.isElementVisibleWithin(message, screenRect, 0.1)) {
+          return true;
+        }
+      }
+
+      return false;
     } catch {
       return false;
     }
