@@ -1,13 +1,23 @@
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 
-const defaultApkPath = path.resolve(
-  process.cwd(),
-  'apps/android/wdio-native-demo-app-2.2.0.apk',
+const projectRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+);
+const defaultApkPath = path.join(
+  projectRoot,
+  'apps',
+  'android',
+  'wdio-native-demo-app-2.2.0.apk',
 );
 
-const appPath = path.resolve(
-  process.env.ANDROID_APP_PATH ?? defaultApkPath,
-);
+const configuredAppPath = process.env.ANDROID_APP_PATH;
+const appPath = configuredAppPath
+  ? path.resolve(projectRoot, configuredAppPath)
+  : defaultApkPath;
+const specsPath = path.join(projectRoot, 'tests', 'specs', '**', '*.spec.ts');
+const tsConfigPath = path.join(projectRoot, 'tsconfig.json');
 
 const androidCapability: WebdriverIO.Capabilities = {
   platformName: 'Android',
@@ -27,7 +37,7 @@ if (process.env.ANDROID_UDID) {
 
 export const config: WebdriverIO.Config = {
   runner: 'local',
-  specs: ['./tests/specs/**/*.spec.ts'],
+  specs: [specsPath],
   exclude: [],
   maxInstances: 1,
   logLevel: 'info',
@@ -58,5 +68,5 @@ export const config: WebdriverIO.Config = {
     ui: 'bdd',
     timeout: 120_000,
   },
-  tsConfigPath: './tsconfig.json',
+  tsConfigPath,
 };

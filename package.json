@@ -10,7 +10,9 @@
   },
   "scripts": {
     "apk:download": "node scripts/download-apk.mjs",
-    "appium:check": "appium driver list --installed --json",
+    "appium:check": "node scripts/check-appium-driver.mjs",
+    "check:solution": "node scripts/check-solution.mjs",
+    "quality": "npm run check:solution && npm run typecheck && npm run appium:check",
     "test": "wdio run ./config/wdio.conf.ts",
     "typecheck": "tsc --noEmit"
   },
