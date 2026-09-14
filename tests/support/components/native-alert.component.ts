@@ -2,8 +2,10 @@ import {browser, expect, $} from '@wdio/globals';
 import {MOBILE_WAIT_TIMEOUT} from '../page-objects/base.page.js';
 
 const ALERT_TITLE_SELECTOR =
-  '//*[@resource-id="com.wdiodemoapp:id/alert_title"]';
+  '//*[@resource-id="android:id/alertTitle" or @resource-id="com.wdiodemoapp:id/alert_title" or (@class="android.widget.TextView" and contains(@text,"Signed Up"))]';
 const ALERT_MESSAGE_SELECTOR = '//*[@resource-id="android:id/message"]';
+const ALERT_OK_BUTTON_SELECTOR =
+  '//*[@resource-id="android:id/button1" or (@class="android.widget.Button" and @text="OK")]';
 
 class NativeAlertComponent {
   private get title() {
@@ -16,6 +18,10 @@ class NativeAlertComponent {
 
   private button(text: string) {
     const escapedText = text.replace(/"/g, '\\"').toUpperCase();
+    if (escapedText === 'OK') {
+      return $(ALERT_OK_BUTTON_SELECTOR);
+    }
+
     return $(`//android.widget.Button[@text="${escapedText}"]`);
   }
 
