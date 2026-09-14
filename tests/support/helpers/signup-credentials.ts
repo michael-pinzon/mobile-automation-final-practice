@@ -1,7 +1,9 @@
-export interface SignupCredentials {
+export interface AuthCredentials {
   email: string;
   password: string;
 }
+
+export type SignupCredentials = AuthCredentials;
 
 export const SIGNUP_PASSWORD = 'Test1234!';
 

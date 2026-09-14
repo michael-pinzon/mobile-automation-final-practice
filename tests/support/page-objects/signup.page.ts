@@ -1,11 +1,9 @@
-import {browser} from '@wdio/globals';
-import {MOBILE_WAIT_TIMEOUT, BasePage} from './base.page.js';
+import {MOBILE_WAIT_TIMEOUT} from './base.page.js';
 import type {SignupCredentials} from '../helpers/signup-credentials.js';
 import NativeAlert from '../components/native-alert.component.js';
+import {AuthFormPage} from './auth-form.page.js';
 
-class SignupPage extends BasePage {
-  private readonly emailSelector = 'input-email';
-  private readonly passwordSelector = 'input-password';
+class SignupPage extends AuthFormPage {
   private readonly repeatPasswordSelector = 'input-repeat-password';
   private readonly signUpButtonSelector = 'button-SIGN UP';
 
@@ -26,25 +24,13 @@ class SignupPage extends BasePage {
   async register(credentials: SignupCredentials): Promise<void> {
     await this.waitForReady();
 
-    await this.byAccessibilityId(this.emailSelector).setValue(
-      credentials.email,
-    );
-    await this.byAccessibilityId(this.passwordSelector).setValue(
-      credentials.password,
-    );
+    await this.fillCredentials(credentials);
     await this.byAccessibilityId(this.repeatPasswordSelector).setValue(
       credentials.password,
     );
 
-    if (await browser.isKeyboardShown()) {
-      // Tapping the screen mirrors the app's supported dismissal path and
-      // works on Android versions where hideKeyboard is unreliable.
-      await this.screen.click();
-    }
-
-    const signUpButton = this.byAccessibilityId(this.signUpButtonSelector);
-    await signUpButton.scrollIntoView({scrollableElement: await this.screen});
-    await signUpButton.click();
+    await this.dismissKeyboard();
+    await this.submit(this.signUpButtonSelector);
   }
 
   async assertSuccessfulRegistration(): Promise<void> {
