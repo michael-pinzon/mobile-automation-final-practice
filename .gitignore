@@ -1,0 +1,12 @@
+node_modules/
+.env
+apps/*.apk
+reports/
+allure-results/
+allure-report/
+logs/
+*.log
+.idea/
+.vscode/
+dist/
+coverage/
