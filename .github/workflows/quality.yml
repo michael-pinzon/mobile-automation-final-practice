@@ -32,8 +32,5 @@ jobs:
       - name: Typecheck TypeScript
         run: npm run typecheck
 
-      - name: Install pinned Appium driver
-        run: npm run appium:install
-
       - name: Check Appium driver installation
         run: npm run appium:check

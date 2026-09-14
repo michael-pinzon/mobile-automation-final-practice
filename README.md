@@ -22,17 +22,14 @@ configura también `ANDROID_HOME` o `ANDROID_SDK_ROOT` apuntando al SDK.
 Clona el repositorio y usa la instalación reproducible basada en el lockfile:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/michael-pinzon/mobile-automation-final-practice.git
 cd mobile-automation
 npm ci
 ```
 
-Comprueba que Appium encuentre el driver UiAutomator2 incluido en las
-dependencias. La instalación del driver se hace una vez por equipo y queda en
-el registro local de Appium:
+Comprueba que la dependencia npm de UiAutomator2 esté instalada:
 
 ```bash
-npm run appium:install
 npm run appium:check
 ```
 
@@ -121,19 +118,17 @@ ANDROID_DEVICE_NAME=Pixel_8_API_35 ANDROID_UDID=emulator-5554 npm test
 ## Comandos
 
 ```bash
-npm run quality          # higiene, typecheck y driver Appium
-npm run check:solution   # archivos de entrega y ausencia de binarios/enunciados
+npm run quality          # higiene, typecheck y dependencias móviles
+npm run check:solution   # archivos requeridos y ausencia de APKs
 npm run typecheck        # compilación TypeScript sin emitir archivos
-npm run appium:install   # instala la versión fijada de UiAutomator2
-npm run appium:check     # driver UiAutomator2 disponible
+npm run appium:check     # dependencia UiAutomator2 fijada instalada
 npm run apk:download     # descarga y validación del APK
 npm test                 # suite móvil; requiere APK y objetivo Android
 ```
 
-La integración continua ejecuta `npm ci`, `check:solution`, `typecheck`, instala
-el driver fijado y ejecuta `appium:check`. No arranca un emulador en CI: los
-cuatro escenarios se ejecutan localmente contra un dispositivo Android
-configurado.
+La integración continua ejecuta `npm ci`, `check:solution`, `typecheck` y
+`appium:check`. No arranca un emulador en CI: los cuatro escenarios se
+ejecutan localmente contra un dispositivo Android configurado.
 
 ## Arquitectura
 
@@ -156,9 +151,8 @@ comportamiento del usuario y puedan ejecutarse de forma aislada.
 
 - Si `npm ci` falla, verifica Node con `node --version` y usa la versión de
   `.nvmrc`.
-- Si `npm run appium:check` no muestra `uiautomator2`, ejecuta
-  `npm run appium:install` y comprueba que no estés usando una instalación
-  global distinta.
+- Si `npm run appium:check` falla, vuelve a ejecutar `npm ci` y comprueba que
+  la versión instalada coincida con la fijada en `package.json`.
 - Si Appium no encuentra el objetivo, revisa `adb devices`, `ANDROID_UDID` y
   que el emulador haya terminado de arrancar.
 - Si la descarga del APK falla por una validación de checksum, no uses un APK

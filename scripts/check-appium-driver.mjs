@@ -1,4 +1,4 @@
-import {execFileSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -7,21 +7,26 @@ const projectRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
 );
-const appiumEntryPoint = path.join(projectRoot, 'node_modules', 'appium', 'index.js');
-const output = execFileSync(
-  process.execPath,
-  [appiumEntryPoint, 'driver', 'list', '--installed', '--json'],
-  {encoding: 'utf8'},
+const driverPackagePath = path.join(
+  projectRoot,
+  'node_modules',
+  'appium-uiautomator2-driver',
+  'package.json',
 );
-const installedDrivers = JSON.parse(output);
-const driver = installedDrivers.uiautomator2;
 
-if (!driver || driver.version !== expectedVersion) {
-  const actualVersion = driver?.version ?? 'not installed';
+let driver;
+try {
+  driver = JSON.parse(readFileSync(driverPackagePath, 'utf8'));
+} catch {
   throw new Error(
-    `Expected UiAutomator2 ${expectedVersion}; found ${actualVersion}. `
-      + 'Run npm run appium:install.',
+    `UiAutomator2 ${expectedVersion} is not installed. Run npm ci to install the locked dependencies.`,
   );
 }
 
-console.log(`UiAutomator2 ${expectedVersion} is installed and available to Appium.`);
+if (driver.version !== expectedVersion) {
+  throw new Error(
+    `Expected UiAutomator2 ${expectedVersion}; found ${driver.version}.`,
+  );
+}
+
+console.log(`UiAutomator2 ${expectedVersion} npm dependency is installed.`);

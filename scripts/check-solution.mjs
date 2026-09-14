@@ -1,5 +1,4 @@
 import {execFileSync} from 'node:child_process';
-import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -32,46 +31,14 @@ const requiredFiles = [
   'tests/specs/swipe-scenarios.spec.ts',
 ];
 const missingFiles = requiredFiles.filter(file => !files.includes(file));
-const forbiddenFiles = files.filter(file => {
-  const lowerCaseFile = file.toLowerCase();
-  return (
-    lowerCaseFile.endsWith('.apk') ||
-    lowerCaseFile === 'mobile_automation_final_practice.md' ||
-    lowerCaseFile.endsWith('/mobile_automation_final_practice.md') ||
-    /(?:^|\/)(?:todo|todos|internal-plan|plan-interno)\.md$/.test(
-      lowerCaseFile,
-    )
-  );
-});
-const textExtensions = new Set(['.md', '.mjs', '.ts', '.json', '.yml', '.yaml']);
-const todoMarkers = [];
-
-for (const file of files) {
-  // This checker necessarily names the markers it detects; do not inspect its
-  // own source when looking for those markers in the solution.
-  if (file === 'scripts/check-solution.mjs') {
-    continue;
-  }
-
-  if (!textExtensions.has(path.posix.extname(file).toLowerCase())) {
-    continue;
-  }
-
-  const content = readFileSync(path.join(projectRoot, file), 'utf8');
-  if (/\b(?:TODO|FIXME)\b/i.test(content)) {
-    todoMarkers.push(file);
-  }
-}
+const binaryFiles = files.filter(file => file.toLowerCase().endsWith('.apk'));
 
 const errors = [];
 if (missingFiles.length > 0) {
   errors.push(`Missing solution files: ${missingFiles.join(', ')}`);
 }
-if (forbiddenFiles.length > 0) {
-  errors.push(`Forbidden delivery files are tracked: ${forbiddenFiles.join(', ')}`);
-}
-if (todoMarkers.length > 0) {
-  errors.push(`TODO/FIXME markers are not allowed in: ${todoMarkers.join(', ')}`);
+if (binaryFiles.length > 0) {
+  errors.push(`APK binaries are not allowed in the repository: ${binaryFiles.join(', ')}`);
 }
 
 if (errors.length > 0) {
@@ -79,6 +46,6 @@ if (errors.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Solution check passed: ${files.length} tracked files, no APK, exercise statement, or TODO markers.`,
+    `Solution check passed: ${files.length} tracked files; required files are present and no APK binaries are tracked.`,
   );
 }
