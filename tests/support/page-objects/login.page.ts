@@ -1,11 +1,14 @@
 import {$, expect} from '@wdio/globals';
-import {BasePage} from './base.page.js';
+import {MOBILE_WAIT_TIMEOUT} from './base.page.js';
+import type {AuthCredentials} from '../helpers/signup-credentials.js';
+import NativeAlert from '../components/native-alert.component.js';
+import {AuthFormPage} from './auth-form.page.js';
 
-class LoginPage extends BasePage {
-  private readonly emailSelector = '~input-email';
-  private readonly passwordSelector = '~input-password';
-  private readonly loginButtonSelector = '~button-LOGIN';
+class LoginPage extends AuthFormPage {
+  private readonly loginButtonId = 'button-LOGIN';
+  private readonly loginButtonSelector = `~${this.loginButtonId}`;
   private readonly signUpTabSelector = '~button-sign-up-container';
+  private readonly loginTabSelector = '~button-login-container';
   private readonly signUpButtonSelector = '~button-SIGN UP';
 
   constructor() {
@@ -33,6 +36,30 @@ class LoginPage extends BasePage {
       timeout: 20_000,
     });
     await expect($(this.signUpButtonSelector)).toBeDisplayed();
+  }
+
+  async openLogin(): Promise<void> {
+    await this.waitForDisplayed();
+    await $(this.loginTabSelector).click();
+    await $(this.loginButtonSelector).waitForDisplayed({
+      timeout: MOBILE_WAIT_TIMEOUT,
+    });
+  }
+
+  async login(credentials: AuthCredentials): Promise<void> {
+    await this.waitForDisplayed();
+    await this.fillCredentials(credentials);
+    await this.dismissKeyboard();
+    await this.submit(this.loginButtonId);
+  }
+
+  async assertSuccessfulLogin(): Promise<void> {
+    await NativeAlert.assertContains('Success');
+    await NativeAlert.assertContains('You are logged in!');
+  }
+
+  async dismissSuccessAlert(): Promise<void> {
+    await NativeAlert.accept();
   }
 }
 
