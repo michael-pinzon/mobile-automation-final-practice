@@ -295,13 +295,10 @@ class SwipePage extends BasePage {
     const visibleCards: ElementHandle[] = [];
 
     for (const card of cards) {
-      if (
-        await this.isElementVisibleWithin(
-          card,
-          currentCarouselRect,
-          CARD_MINIMUM_VISIBLE_RATIO,
-        )
-      ) {
+      // UiAutomator2 can return bounds already clipped to the viewport, which
+      // makes an area-overlap ratio report a partial card as fully visible.
+      // The card centered in the carousel is the active one.
+      if (await this.isElementCenterWithin(card, currentCarouselRect)) {
         visibleCards.push(card);
       }
     }
