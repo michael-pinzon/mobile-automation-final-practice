@@ -1,0 +1,39 @@
+name: Quality
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  static-checks:
+    name: Reproducible install and static checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Check solution contents
+        run: npm run check:solution
+
+      - name: Typecheck TypeScript
+        run: npm run typecheck
+
+      - name: Install pinned Appium driver
+        run: npm run appium:install
+
+      - name: Check Appium driver installation
+        run: npm run appium:check

@@ -1,3 +1,4 @@
+import {browser} from '@wdio/globals';
 import BottomNavigation, {
   BOTTOM_NAVIGATION_ITEMS,
 } from '../support/components/bottom-navigation.component.js';
